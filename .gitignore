@@ -1,0 +1,16 @@
+# environments / caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+# heavy artefacts live under D:/ml-portfolio/{data,models}/finrag (never commit them)
+data/
+models/
+mlruns/
+*.npy
+*.parquet
+*.safetensors
+*.bin
+qdrant/
+logs/

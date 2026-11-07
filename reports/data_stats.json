@@ -1,0 +1,44 @@
+{
+  "_generated": "2026-11-07T02:57:21",
+  "source": {
+    "corpus_and_queries": "https://huggingface.co/datasets/BeIR/fiqa @ 979c07a7cb5ccc6ca009792241fa1250b98055dd",
+    "qrels": "https://huggingface.co/datasets/BeIR/fiqa-qrels @ 252958f2d646e22cab6d0c72dd3f0d5de6d0655a",
+    "license": "cc-by-sa-4.0 (per both dataset cards)"
+  },
+  "n_passages": 57638,
+  "n_empty_passages_after_cleaning": 38,
+  "passage_words": {
+    "mean": 132.9,
+    "p50": 90,
+    "p95": 368,
+    "max": 2973
+  },
+  "n_queries_total": 6648,
+  "splits": {
+    "train": {
+      "n_queries": 5500,
+      "n_judged_pairs": 14166,
+      "mean_relevant_per_query": 2.58,
+      "relevance_values": [
+        1
+      ]
+    },
+    "dev": {
+      "n_queries": 500,
+      "n_judged_pairs": 1238,
+      "mean_relevant_per_query": 2.48,
+      "relevance_values": [
+        1
+      ]
+    },
+    "test": {
+      "n_queries": 648,
+      "n_judged_pairs": 1706,
+      "mean_relevant_per_query": 2.63,
+      "relevance_values": [
+        1
+      ]
+    }
+  },
+  "qrels_docs_missing_from_corpus": 0
+}
