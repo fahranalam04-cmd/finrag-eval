@@ -1,0 +1,56 @@
+{
+  "_generated": "2026-11-07T08:28:51",
+  "split": "dev",
+  "n_queries_per_config": {
+    "selected_top5": 24
+  },
+  "nli_model": "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli",
+  "nli_threshold": 0.5,
+  "definitions": "see finrag/faithfulness.py module docstring",
+  "configs": {
+    "selected_top5": {
+      "n_queries": 24,
+      "n_answered": 24,
+      "abstention_rate": 0.0,
+      "abstention_rate_context_has_relevant": 0.0,
+      "abstention_rate_context_no_relevant": 0.0,
+      "n_context_has_relevant": 15,
+      "answers_with_citation_rate": 0.1667,
+      "citation_validity": 0.8889,
+      "answers_all_citations_valid_rate": 0.125,
+      "citation_precision_qrels": 0.25,
+      "context_precision_qrels": 0.1667,
+      "n_sentences": 72,
+      "sentence_own_citation_rate": 0.0972,
+      "faithfulness_sentence": 0.0417,
+      "faithfulness_answer_macro": 0.0486,
+      "fully_faithful_answer_rate": 0.0,
+      "context_faithfulness_sentence": 0.7361,
+      "nli_threshold": 0.5,
+      "ci95": {
+        "faithfulness_answer_macro": [
+          0.0,
+          0.125
+        ],
+        "citation_precision_answer_macro": [
+          0.0,
+          0.5
+        ],
+        "abstention_rate": [
+          0.0,
+          0.0
+        ]
+      },
+      "citation_precision_answer_macro": 0.1667
+    }
+  },
+  "paired_bootstrap": {},
+  "judge_seconds": 5.1,
+  "hardware": {
+    "cpu": "Intel i7-11800H (8C/16T), torch/BLAS threads capped at 4",
+    "os": "Windows-10-10.0.19045-SP0",
+    "python": "3.12.14",
+    "gpu": "NVIDIA GeForce RTX 3060 Laptop GPU",
+    "torch": "2.11.0+cu128"
+  }
+}

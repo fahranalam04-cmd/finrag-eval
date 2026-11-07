@@ -54,7 +54,9 @@ def test_prompt_contains_ids_and_truncates():
     msgs = build_messages("Why?", [ContextPassage("7", "word " * 500)], max_words=10)
     assert msgs[0]["role"] == "system" and ABSTAIN_PHRASE in msgs[0]["content"]
     assert "[doc7] " in msgs[-1]["content"] and msgs[-1]["content"].count("word") == 10
-    assert msgs[-2]["content"] == ABSTAIN_PHRASE  # the few-shot abstention demo precedes the question
+    assert len(msgs) == 2 and msgs[-1]["content"].endswith(f"'{ABSTAIN_PHRASE}'.")  # v1 reminder last
+    v2 = build_messages("q?", [ContextPassage("7", "text")], version="v2")
+    assert v2[-2]["content"] == ABSTAIN_PHRASE  # v2: few-shot abstention demo precedes the question
     assert truncate_words("a b c", 5) == "a b c"
 
 

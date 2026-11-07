@@ -18,7 +18,7 @@ from finrag.data import read_jsonl, write_jsonl
 from finrag.experiments.common import corpus_by_id, hardware, qrels, queries, write_report
 from finrag.experiments.retrieval import variant_runs
 from finrag.faithfulness import aggregate, judge_answer, per_answer_faithfulness
-from finrag.generation import DEFAULT_MAX_WORDS, FEW_SHOT, SYSTEM_PROMPT, ContextPassage
+from finrag.generation import DEFAULT_MAX_WORDS, PROMPT_VERSION, SYSTEM_PROMPT, ContextPassage
 from finrag.metrics import bootstrap_ci, paired_bootstrap
 from finrag.types import ranked_ids
 
@@ -131,7 +131,7 @@ def generate(
             c: {"retrieval": GEN_CONFIGS[c][0], "k_context": GEN_CONFIGS[c][1]}
             for c in configs or GEN_CONFIGS
         },
-        "few_shot_demos": len(FEW_SHOT) // 2,
+        "prompt_version": PROMPT_VERSION,
         "system_prompt": SYSTEM_PROMPT,
         "timing": timing,
         "single_query_latency_ms": {

@@ -1,5 +1,5 @@
 {
-  "_generated": "2026-11-07T08:17:56",
+  "_generated": "2026-11-07T08:36:52",
   "pipeline": {
     "embedder": "bge-base",
     "reranker": "bge-reranker-base",
@@ -132,5 +132,140 @@
       "gpu": "NVIDIA GeForce RTX 3060 Laptop GPU",
       "torch": "2.11.0+cu128"
     }
+  },
+  "cpu": {
+    "device_for_models": "cpu",
+    "cpu_only_stages": [
+      "bm25",
+      "dense_search (Qdrant embedded, exact)",
+      "fusion",
+      "fetch_text"
+    ],
+    "batch_size": 1,
+    "k_returned": 10,
+    "load_seconds": 73.1,
+    "modes": {
+      "bm25": {
+        "n_queries": 100,
+        "stages_ms": {
+          "bm25": {
+            "p50": 2.45,
+            "p95": 4.19,
+            "mean": 2.61
+          },
+          "total": {
+            "p50": 3.21,
+            "p95": 5.48,
+            "mean": 3.48
+          }
+        }
+      },
+      "dense": {
+        "n_queries": 100,
+        "stages_ms": {
+          "embed_query": {
+            "p50": 70.86,
+            "p95": 100.61,
+            "mean": 75.65
+          },
+          "dense_search": {
+            "p50": 348.44,
+            "p95": 512.77,
+            "mean": 382.79
+          },
+          "total": {
+            "p50": 417.89,
+            "p95": 621.41,
+            "mean": 458.96
+          }
+        }
+      },
+      "hybrid": {
+        "n_queries": 100,
+        "stages_ms": {
+          "bm25": {
+            "p50": 3.0,
+            "p95": 5.47,
+            "mean": 3.39
+          },
+          "embed_query": {
+            "p50": 80.56,
+            "p95": 97.31,
+            "mean": 80.06
+          },
+          "dense_search": {
+            "p50": 441.08,
+            "p95": 506.21,
+            "mean": 447.43
+          },
+          "fusion": {
+            "p50": 0.41,
+            "p95": 0.64,
+            "mean": 0.43
+          },
+          "total": {
+            "p50": 525.35,
+            "p95": 600.66,
+            "mean": 531.84
+          }
+        }
+      },
+      "hybrid_rerank": {
+        "n_queries": 30,
+        "stages_ms": {
+          "bm25": {
+            "p50": 3.88,
+            "p95": 6.59,
+            "mean": 4.17
+          },
+          "embed_query": {
+            "p50": 62.79,
+            "p95": 85.88,
+            "mean": 66.13
+          },
+          "dense_search": {
+            "p50": 306.9,
+            "p95": 428.71,
+            "mean": 340.26
+          },
+          "fusion": {
+            "p50": 0.39,
+            "p95": 0.56,
+            "mean": 0.38
+          },
+          "fetch_text": {
+            "p50": 2.43,
+            "p95": 4.05,
+            "mean": 2.5
+          },
+          "rerank": {
+            "p50": 10391.82,
+            "p95": 11622.58,
+            "mean": 10442.77
+          },
+          "total": {
+            "p50": 10774.41,
+            "p95": 12101.04,
+            "mean": 10856.9
+          }
+        }
+      }
+    },
+    "hardware": {
+      "cpu": "Intel i7-11800H (8C/16T), torch/BLAS threads capped at 4",
+      "os": "Windows-10-10.0.19045-SP0",
+      "python": "3.12.14"
+    }
+  },
+  "numpy_exact_dense_reference": {
+    "embedder": "bge-base",
+    "n_queries": 200,
+    "k": 100,
+    "ms": {
+      "p50": 10.73,
+      "p95": 13.26,
+      "mean": 10.78
+    },
+    "top_k_agreement_with_qdrant": 0.9966
   }
 }

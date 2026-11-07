@@ -15,21 +15,37 @@ from typing import Protocol
 ABSTAIN_PHRASE = "not enough information"
 DEFAULT_MAX_WORDS = 180  # per-passage truncation in the prompt (FiQA passage p50 = 90 words, p95 = 368)
 
-SYSTEM_PROMPT = (
-    "You are a careful financial question-answering assistant. Answer the question using ONLY the "
-    "passages provided.\n"
-    "Rules:\n"
-    "1. End every sentence with the id of the passage that supports it, in square brackets, exactly as "
-    "written before that passage, e.g. [docID]. Only cite ids that appear in the passages.\n"
+_RULES_TAIL = (
     "2. Do not use outside knowledge and do not invent facts, numbers or ids.\n"
     f"3. If the passages do not contain enough information to answer, reply with exactly: {ABSTAIN_PHRASE}\n"
     "4. Be concise: at most 4 sentences."
 )
+_INTRO = (
+    "You are a careful financial question-answering assistant. Answer the question using ONLY the "
+    "passages provided.\nRules:\n"
+)
+SYSTEM_PROMPTS = {
+    "v1": _INTRO + "1. After every sentence, cite the passage(s) that support it using their ids in square "
+    "brackets, for example [doc12345]. Only cite ids that appear in the passages.\n" + _RULES_TAIL,
+    "v2": _INTRO + "1. End every sentence with the id of the passage that supports it, in square brackets, "
+    "exactly as written before that passage, e.g. [docID]. Only cite ids that appear in the passages.\n"
+    + _RULES_TAIL,
+}
+V1_REMINDER = (
+    "Answer in at most 4 sentences, citing passages like [doc12345] after each sentence, "
+    f"or reply exactly '{ABSTAIN_PHRASE}'."
+)
 
-# Prompt v2 (chosen on dev): v1 had no demonstration and a concrete example id; on 24 dev queries only
-# 35-45% of answers carried any citation and one copied the example id. A one-shot demonstration
-# (ids with a leading zero never occur in FiQA, so a copied demo id is counted as an invalid citation)
-# plus a matching abstention demo fixes the format for a 1.5B model.
+# Prompt selection on 24 dev queries (reports/generation_eval_dev_prompt_v{1,2}.json, selected_top5):
+#   v1 = rules + an end-of-turn reminder with an example id: 45% of answers cite, sentence faithfulness 0.22
+#        (one answer copied the example id [doc12345], which is then scored as an invalid citation).
+#   v2 = one-shot citation demo + abstention demo, no end-of-turn reminder: only 17% of answers cite,
+#        faithfulness 0.04. The 1.5B model follows the instruction nearest the question, not the demo.
+# v1 is used for the test run; v2 is kept only so the dev comparison can be reproduced.
+PROMPT_VERSION = "v1"
+SYSTEM_PROMPT = SYSTEM_PROMPTS[PROMPT_VERSION]
+
+# Demo ids have a leading zero, which never occurs in FiQA, so a copied demo id counts as invalid.
 FEW_SHOT: list[dict[str, str]] = [
     {
         "role": "user",
@@ -87,10 +103,24 @@ def format_context(passages: Sequence[ContextPassage], max_words: int = DEFAULT_
 
 
 def build_messages(
-    question: str, passages: Sequence[ContextPassage], max_words: int = DEFAULT_MAX_WORDS
+    question: str,
+    passages: Sequence[ContextPassage],
+    max_words: int = DEFAULT_MAX_WORDS,
+    version: str = PROMPT_VERSION,
 ) -> list[dict[str, str]]:
     user = f"Passages:\n{format_context(passages, max_words)}\n\nQuestion: {question}"
-    return [{"role": "system", "content": SYSTEM_PROMPT}, *FEW_SHOT, {"role": "user", "content": user}]
+    if version == "v1":
+        return [
+            {"role": "system", "content": SYSTEM_PROMPTS["v1"]},
+            {"role": "user", "content": f"{user}\n\n{V1_REMINDER}"},
+        ]
+    if version == "v2":
+        return [
+            {"role": "system", "content": SYSTEM_PROMPTS["v2"]},
+            *FEW_SHOT,
+            {"role": "user", "content": user},
+        ]
+    raise ValueError(f"unknown prompt version {version!r}")
 
 
 _BRACKET = re.compile(r"\[([^\[\]]{1,200})\]")
