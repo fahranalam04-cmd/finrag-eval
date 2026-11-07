@@ -129,6 +129,7 @@ def _all(a: argparse.Namespace, p: Paths) -> None:
         n_rerank_queries=None,
         n=150,
         seed=13,
+        configs=None,
     )
     steps: list[tuple[str, Callable[[argparse.Namespace, Paths], None], dict]] = [
         ("prepare", _prepare, {}),
