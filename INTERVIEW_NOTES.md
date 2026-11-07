@@ -154,7 +154,8 @@ What helps and what doesn't: top-5 vs top-3 makes no difference to answer-level 
   measured, the GPU was shared, and thermals were not controlled.
 - **One dataset, one seed, greedy decoding.** No variance across seeds for generation. Retrieval is
   deterministic.
-- **CI is written but not yet run** (the repo has not been pushed).
+- **CI covers lint and fast tests only** (ruff + pytest on CPU with fake models). It passes on GitHub, but
+  it does not re-run the retrieval or generation evaluation.
 
 ## Likely interview questions
 

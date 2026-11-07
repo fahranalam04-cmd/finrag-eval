@@ -220,5 +220,5 @@ No data or weights are committed. Code: MIT (see `LICENSE`).
 - **Serving only smoke-tested.** `/health`, `/search` (hybrid and hybrid_rerank) and the 503 from
   `/answer` without a generator were checked against the real indexes on CPU. `/answer` with the LLM
   loaded and the Streamlit UI were not run end to end; API behaviour is covered by fake-backed tests.
-- **CI not yet run.** `.github/workflows/ci.yml` (ruff + pytest on CPU) has been written but has not
-  run on GitHub, because the repo has not been pushed.
+- **CI passes on GitHub.** `.github/workflows/ci.yml` (ruff + pytest on CPU, no model downloads) passed
+  on its first run ([run 42404125349](https://github.com/fahranalam04-cmd/finrag-eval/actions/runs/42404125349), 2026-11-07).
