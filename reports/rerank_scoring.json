@@ -1,0 +1,63 @@
+{
+  "_generated": "2026-11-07T08:06:24",
+  "dev": {
+    "embedder": "bge-base",
+    "hardware": {
+      "cpu": "Intel i7-11800H (8C/16T), torch/BLAS threads capped at 4",
+      "os": "Windows-10-10.0.19045-SP0",
+      "python": "3.12.14",
+      "gpu": "NVIDIA GeForce RTX 3060 Laptop GPU",
+      "torch": "2.11.0+cu128"
+    },
+    "minilm-l6": {
+      "hf_id": "cross-encoder/ms-marco-MiniLM-L6-v2",
+      "depth": 50,
+      "n_pairs": 25000,
+      "seconds": 24.6,
+      "pairs_per_second": 1018.2,
+      "batch_size": 64,
+      "fp16": true,
+      "max_length": 512
+    },
+    "bge-reranker-base": {
+      "hf_id": "BAAI/bge-reranker-base",
+      "depth": 50,
+      "n_pairs": 25000,
+      "seconds": 131.0,
+      "pairs_per_second": 190.9,
+      "batch_size": 64,
+      "fp16": true,
+      "max_length": 512
+    }
+  },
+  "test": {
+    "embedder": "bge-base",
+    "hardware": {
+      "cpu": "Intel i7-11800H (8C/16T), torch/BLAS threads capped at 4",
+      "os": "Windows-10-10.0.19045-SP0",
+      "python": "3.12.14",
+      "gpu": "NVIDIA GeForce RTX 3060 Laptop GPU",
+      "torch": "2.11.0+cu128"
+    },
+    "minilm-l6": {
+      "hf_id": "cross-encoder/ms-marco-MiniLM-L6-v2",
+      "depth": 5,
+      "n_pairs": 3240,
+      "seconds": 3.2,
+      "pairs_per_second": 1004.0,
+      "batch_size": 64,
+      "fp16": true,
+      "max_length": 512
+    },
+    "bge-reranker-base": {
+      "hf_id": "BAAI/bge-reranker-base",
+      "depth": 5,
+      "n_pairs": 3240,
+      "seconds": 12.7,
+      "pairs_per_second": 255.9,
+      "batch_size": 64,
+      "fp16": true,
+      "max_length": 512
+    }
+  }
+}

@@ -41,6 +41,8 @@ class RetrieverConfig:
     rrf_k: int = 60
     dense_weight: float = 1.0  # RRF weight of the dense list (BM25 weight fixed at 1)
     rerank_depth: int = 50
+    rerank_fusion_k: int | None = None  # None = pure CE order; int = RRF(first-stage, CE) with this k
+    rerank_weight: float = 1.0  # RRF weight of the CE list when rerank_fusion_k is set
 
     def fuse(self, bm25_ids: Sequence[str], dense_ids: Sequence[str]) -> Ranked:
         return rrf(
@@ -110,7 +112,7 @@ class HybridRetriever:
         t0 = time.perf_counter()
         scores = self.reranker.score_pairs([(query, texts[d].text if d in texts else "") for d in head])
         t["rerank"] = (time.perf_counter() - t0) * 1e3
-        return apply_rerank(fused, scores, cfg.rerank_depth)
+        return apply_rerank(fused, scores, cfg.rerank_depth, cfg.rerank_fusion_k, cfg.rerank_weight)
 
     def search(self, query: str, mode: Mode = "hybrid_rerank", k: int = 10) -> SearchResult:
         timings: dict[str, float] = {}

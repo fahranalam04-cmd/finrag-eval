@@ -8,6 +8,7 @@ from typing import Protocol
 
 import numpy as np
 
+from finrag.fusion import rrf
 from finrag.types import Ranked
 
 
@@ -64,13 +65,27 @@ class CrossEncoderReranker:
         return np.asarray(s, dtype=np.float32).reshape(len(pairs), -1)[:, -1]
 
 
-def apply_rerank(candidates: Ranked, scores: Sequence[float], depth: int) -> Ranked:
-    """Re-order the first `depth` candidates by cross-encoder score; the tail keeps its fused order
-    (so Recall@depth is unchanged by reranking and only the head ordering moves)."""
+def apply_rerank(
+    candidates: Ranked,
+    scores: Sequence[float],
+    depth: int,
+    fusion_k: int | None = None,
+    weight: float = 1.0,
+) -> Ranked:
+    """Re-order the first `depth` candidates with cross-encoder scores; the tail keeps its fused order
+    (so Recall@depth is unchanged and only the head ordering moves).
+
+    fusion_k=None : pure rerank, the head is sorted by cross-encoder score.
+    fusion_k=k    : rank fusion, RRF(first-stage head order, cross-encoder order) with the CE list
+                    weighted by `weight`, so first-stage evidence is kept rather than discarded.
+    """
     depth = min(depth, len(candidates))
     if len(scores) < depth:
         raise ValueError(f"need {depth} scores, got {len(scores)}")
-    head = sorted(
-        ((candidates[i][0], float(scores[i]), i) for i in range(depth)), key=lambda x: (-x[1], x[2])
-    )
-    return [(d, s) for d, s, _ in head] + list(candidates[depth:])
+    by_ce = sorted(range(depth), key=lambda i: (-float(scores[i]), i))
+    if fusion_k is None:
+        head = [(candidates[i][0], float(scores[i])) for i in by_ce]
+    else:
+        ids = [candidates[i][0] for i in range(depth)]
+        head = rrf([ids, [ids[i] for i in by_ce]], k=fusion_k, weights=[1.0, weight])
+    return head + list(candidates[depth:])

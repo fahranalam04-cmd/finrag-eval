@@ -46,3 +46,19 @@ def test_apply_rerank_only_moves_head():
 def test_term_overlap_reranker():
     s = TermOverlapReranker().score_pairs([("index fund fees", "index fund"), ("index fund fees", "bonds")])
     assert s[0] > s[1]
+
+
+def test_apply_rerank_rank_fusion_keeps_first_stage_evidence():
+    cands = [("a", 0.9), ("b", 0.8), ("c", 0.7), ("d", 0.6)]
+    scores = [0.1, 0.9, 0.5]  # CE order: b, c, a
+    # k=1, equal weights: a = 1/2 + 1/4, b = 1/3 + 1/2, c = 1/4 + 1/3 -> b, a, c
+    out = apply_rerank(cands, scores, depth=3, fusion_k=1, weight=1.0)
+    assert [d for d, _ in out] == ["b", "a", "c", "d"]
+    assert out[1][1] == pytest.approx(1 / 2 + 1 / 4)
+    # a tiny CE weight leaves the first-stage order intact
+    assert [d for d, _ in apply_rerank(cands, scores, depth=3, fusion_k=1, weight=0.01)] == [
+        "a",
+        "b",
+        "c",
+        "d",
+    ]

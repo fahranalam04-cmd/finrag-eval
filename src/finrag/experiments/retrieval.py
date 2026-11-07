@@ -34,6 +34,9 @@ from finrag.types import Ranked, ranked_ids
 RRF_K_GRID = (1, 5, 10, 20, 40, 60, 100)
 DENSE_WEIGHT_GRID = (1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 10.0)
 RERANK_DEPTH_GRID = (5, 10, 20, 30, 50)
+RERANK_FUSION_K_GRID = (5, 20, 60)  # rank fusion of first-stage and CE orders
+RERANK_WEIGHT_GRID = (0.25, 0.5, 1.0)
+RERANK_KEYS = ("rerank_depth", "rerank_fusion_k", "rerank_weight")
 SELECT = "ndcg@10"
 
 Runs = dict[str, Ranked]
@@ -53,11 +56,13 @@ def fused_runs(bm25: Runs, dense: Runs, cfg: RetrieverConfig) -> Runs:
     return {q: cfg.fuse(ranked_ids(bm25.get(q, [])), ranked_ids(dense.get(q, []))) for q in qids}
 
 
-def reranked_runs(fused: Runs, ce: CEScores, depth: int) -> Runs:
+def reranked_runs(
+    fused: Runs, ce: CEScores, depth: int, fusion_k: int | None = None, weight: float = 1.0
+) -> Runs:
     out = {}
     for q, cands in fused.items():
         head = cands[:depth]
-        out[q] = apply_rerank(cands, [ce[q][d] for d, _ in head], depth)
+        out[q] = apply_rerank(cands, [ce[q][d] for d, _ in head], depth, fusion_k, weight)
     return out
 
 
@@ -132,7 +137,11 @@ def score_candidates(paths: Paths, split: str, rerankers: list[str], batch_size:
     docs = corpus_by_id(paths)
     stats = {}
     for name in rerankers:
-        depth = max(RERANK_DEPTH_GRID) if split == TUNING_SPLIT else tuning["best_depth_per_reranker"][name]
+        depth = (
+            max(RERANK_DEPTH_GRID)
+            if split == TUNING_SPLIT
+            else tuning["best_rerank_per_reranker"][name]["rerank_depth"]
+        )
         pool = candidate_pool(paths, split, depth)
         pairs_idx = [(q, d) for q, ds in pool.items() for d in ds]
         # length-sorted batching to minimise padding; scores are mapped back by (q, d)
@@ -187,26 +196,54 @@ def tune_rerank(paths: Paths, split: str = TUNING_SPLIT) -> dict:
         if not p.exists():
             continue
         ce = json.loads(p.read_text(encoding="utf-8"))
-        for depth in RERANK_DEPTH_GRID:
-            ev = evaluate_run(_ids(reranked_runs(fused, ce, depth)), qr)
-            grid.append({"reranker": name, "rerank_depth": depth, **_mean(ev.mean)})
-    best = max(grid, key=lambda r: r[SELECT])
+        settings = [(d, None, 1.0) for d in RERANK_DEPTH_GRID] + [
+            (d, k, w) for d in RERANK_DEPTH_GRID for k in RERANK_FUSION_K_GRID for w in RERANK_WEIGHT_GRID
+        ]
+        for depth, fk, w in settings:
+            ev = evaluate_run(_ids(reranked_runs(fused, ce, depth, fk, w)), qr)
+            grid.append(
+                {
+                    "reranker": name,
+                    "rerank_depth": depth,
+                    "rerank_fusion_k": fk,
+                    "rerank_weight": w,
+                    **_mean(ev.mean),
+                }
+            )
     report["rerank_grid"] = grid
-    report["best_depth_per_reranker"] = {
-        n: max((r for r in grid if r["reranker"] == n), key=lambda r: r[SELECT])["rerank_depth"]
-        for n in {r["reranker"] for r in grid}
+    report["best_rerank_per_reranker"] = {
+        n: max((r for r in grid if r["reranker"] == n), key=lambda r: r[SELECT])
+        for n in sorted({r["reranker"] for r in grid})
     }
-    report["selected_rerank"] = {"reranker": best["reranker"], "rerank_depth": best["rerank_depth"]}
-    report["hybrid_rerank_selected"] = {m: best[m] for m in DEFAULT_METRICS}
+    report["best_pure_rerank_per_reranker"] = {
+        n: max(
+            (r for r in grid if r["reranker"] == n and r["rerank_fusion_k"] is None), key=lambda r: r[SELECT]
+        )
+        for n in sorted({r["reranker"] for r in grid})
+    }
+    best = max(grid, key=lambda r: r[SELECT])
+    # the reranker must earn its place: it is only switched on if it beats the tuned hybrid on dev
+    if best[SELECT] > report["hybrid_selected"][SELECT]:
+        report["selected_rerank"] = {"reranker": best["reranker"], **{k: best[k] for k in RERANK_KEYS}}
+        report["hybrid_rerank_selected"] = {m: best[m] for m in DEFAULT_METRICS}
+    else:
+        report["selected_rerank"] = None
+        report["hybrid_rerank_selected"] = None
     write_report("dev_tuning", report)
     print(json.dumps({k: report[k] for k in ("selected_rerank", "hybrid_rerank_selected")}, indent=1))
     return report
 
 
-def selected_config(tuning: Mapping | None = None) -> tuple[str, RetrieverConfig, str]:
+def selected_config(tuning: Mapping | None = None) -> tuple[str, RetrieverConfig, str | None]:
+    """(embedder, retriever config, reranker name or None) frozen from the dev tuning report."""
     t = tuning or read_report("dev_tuning")
-    cfg = RetrieverConfig(**t["selected_fusion"], rerank_depth=t["selected_rerank"]["rerank_depth"])
-    return t["selected_embedder"], cfg, t["selected_rerank"]["reranker"]
+    sel = t.get("selected_rerank")
+    rr = {k: sel[k] for k in RERANK_KEYS} if sel else {}
+    return (
+        t["selected_embedder"],
+        RetrieverConfig(**t["selected_fusion"], **rr),
+        sel["reranker"] if sel else None,
+    )
 
 
 def variant_runs(paths: Paths, split: str) -> tuple[dict[str, Runs], dict]:
@@ -224,21 +261,25 @@ def variant_runs(paths: Paths, split: str) -> tuple[dict[str, Runs], dict]:
     fused = fused_runs(bm25, variants[f"dense:{emb}"], cfg)
     variants["hybrid:rrf60"] = plain
     variants["hybrid:tuned"] = fused
-    for name, depth in tuning["best_depth_per_reranker"].items():
+    for name, best in tuning["best_rerank_per_reranker"].items():
         p = ce_path(paths, name, emb, split)
         if p.exists():
-            variants[f"hybrid+rerank:{name}"] = reranked_runs(
-                fused, json.loads(p.read_text(encoding="utf-8")), depth
-            )
+            ce = json.loads(p.read_text(encoding="utf-8"))
+            variants[f"hybrid+rerank:{name}"] = reranked_runs(fused, ce, *(best[k] for k in RERANK_KEYS))
+            pure = tuning["best_pure_rerank_per_reranker"][name]
+            if pure["rerank_depth"] <= best["rerank_depth"]:  # CE scores cover this depth
+                variants[f"hybrid+pure-rerank:{name}"] = reranked_runs(fused, ce, pure["rerank_depth"])
     selected = {
         "embedder": emb,
         "rrf_k": cfg.rrf_k,
         "dense_weight": cfg.dense_weight,
         "reranker": rr_sel,
-        "rerank_depth": cfg.rerank_depth,
+        "rerank_depth": cfg.rerank_depth if rr_sel else None,
+        "rerank_fusion_k": cfg.rerank_fusion_k if rr_sel else None,
+        "rerank_weight": cfg.rerank_weight if rr_sel else None,
         "bm25": tuning["bm25_params"],
         "candidates_per_retriever": cfg.candidates,
-        "variant": f"hybrid+rerank:{rr_sel}",
+        "variant": f"hybrid+rerank:{rr_sel}" if rr_sel else "hybrid:tuned",
     }
     return variants, selected
 
@@ -289,13 +330,9 @@ def evaluate_split(paths: Paths, split: str = REPORT_SPLIT, n_boot: int = 10_000
             "relative_lift": round(r["diff"] / base, 4) if base else None
         }
 
-    comparisons = {
-        f"{sel} vs bm25": cmp("bm25", sel),
-        f"{dense_sel} vs bm25": cmp("bm25", dense_sel),
-        f"hybrid:tuned vs {dense_sel}": cmp(dense_sel, "hybrid:tuned"),
-        f"{sel} vs hybrid:tuned": cmp("hybrid:tuned", sel),
-        f"{sel} vs {dense_sel}": cmp(dense_sel, sel),
-    }
+    pairs = [("bm25", sel), ("bm25", dense_sel), (dense_sel, "hybrid:tuned"), (dense_sel, "hybrid:rrf60")]
+    pairs += [("hybrid:tuned", v) for v in variants if v.startswith("hybrid+")]
+    comparisons = {f"{b} vs {a}": cmp(a, b) for a, b in dict.fromkeys(pairs) if a != b}
     report = {
         "split": split,
         "n_queries": len(qr),

@@ -23,13 +23,14 @@ from finrag.metrics import bootstrap_ci, paired_bootstrap
 from finrag.types import ranked_ids
 
 # config name -> (retrieval variant key prefix, number of passages in the prompt)
+# "selected" = the dev-selected retrieval pipeline (see reports/retrieval_test.json:selected_pipeline)
 GEN_CONFIGS: dict[str, tuple[str, int]] = {
-    "rerank_top3": ("hybrid+rerank", 3),
-    "rerank_top5": ("hybrid+rerank", 5),
-    "hybrid_top5": ("hybrid:tuned", 5),  # same fused list, no cross-encoder
+    "selected_top3": ("selected", 3),
+    "selected_top5": ("selected", 5),
+    "bm25_top5": ("bm25", 5),  # baseline retrieval feeding the same generator
 }
-PAIRED = [("rerank_top3", "rerank_top5"), ("hybrid_top5", "rerank_top5")]
-SINGLE_CONFIG = "rerank_top5"
+PAIRED = [("selected_top3", "selected_top5"), ("bm25_top5", "selected_top5")]
+SINGLE_CONFIG = "selected_top5"
 
 
 def sample_query_ids(split: str, n: int, seed: int, paths: Paths) -> list[str]:
@@ -41,7 +42,7 @@ def contexts(paths: Paths, split: str) -> dict[str, dict[str, list[str]]]:
     variants, selected = variant_runs(paths, split)
     out: dict[str, dict[str, list[str]]] = {}
     for cfg, (prefix, k) in GEN_CONFIGS.items():
-        key = selected["variant"] if prefix == "hybrid+rerank" else prefix
+        key = selected["variant"] if prefix == "selected" else prefix
         out[cfg] = {q: ranked_ids(r)[:k] for q, r in variants[key].items()}
     return out
 

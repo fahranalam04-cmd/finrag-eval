@@ -19,6 +19,7 @@ def test_health(client):
     assert r.status_code == 200
     body = r.json()
     assert body["status"] == "ok" and "hybrid_rerank" in body["modes"]
+    assert body["default_mode"] == "hybrid_rerank"  # a reranker is loaded
     assert body["generator"] == "fake-extractive" and body["reranker"] == "term-overlap"
 
 
@@ -58,4 +59,19 @@ def test_answer_validation(client):
 def test_answer_without_generator_is_503(retriever):
     c = TestClient(create_app(RAGPipeline(retriever, generator=None)))
     assert c.post("/answer", json={"query": "fees"}).status_code == 503
-    assert c.post("/search", json={"query": "fees"}).status_code == 200
+    r = c.post("/search", json={"query": "fees"})
+    assert r.status_code == 200 and r.json()["mode"] == "hybrid_rerank"
+
+
+def test_mode_defaults_to_hybrid_without_reranker_and_rerank_is_rejected(retriever):
+    no_rr = replace_reranker(retriever)
+    c = TestClient(create_app(RAGPipeline(no_rr)))
+    assert c.get("/health").json()["default_mode"] == "hybrid"
+    assert c.post("/search", json={"query": "fees"}).json()["mode"] == "hybrid"
+    assert c.post("/search", json={"query": "fees", "mode": "hybrid_rerank"}).status_code == 400
+
+
+def replace_reranker(retriever):
+    from finrag.retriever import HybridRetriever
+
+    return HybridRetriever(retriever.bm25, retriever.dense, retriever.embedder, None, config=retriever.config)

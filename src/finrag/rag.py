@@ -30,13 +30,18 @@ class RAGPipeline:
     def __init__(self, retriever: HybridRetriever, generator: Generator | None = None) -> None:
         self.retriever, self.generator = retriever, generator
 
-    def search(self, query: str, mode: Mode = "hybrid_rerank", k: int = 10) -> SearchResult:
-        return self.retriever.search(query, mode, k)
+    @property
+    def default_mode(self) -> Mode:
+        """The dev-selected pipeline: rerank only if a reranker was selected (and loaded)."""
+        return "hybrid_rerank" if self.retriever.reranker is not None else "hybrid"
 
-    def answer(self, query: str, mode: Mode = "hybrid_rerank", k_context: int = 5) -> Answer:
+    def search(self, query: str, mode: Mode | None = None, k: int = 10) -> SearchResult:
+        return self.retriever.search(query, mode or self.default_mode, k)
+
+    def answer(self, query: str, mode: Mode | None = None, k_context: int = 5) -> Answer:
         if self.generator is None:
             raise RuntimeError("no generator configured")
-        res = self.retriever.search(query, mode, k_context)
+        res = self.retriever.search(query, mode or self.default_mode, k_context)
         t0 = time.perf_counter()
         context = [ContextPassage(h.doc_id, h.text) for h in res.hits]
         gen = self.generator.generate_batch([(query, context)])[0]
@@ -54,17 +59,21 @@ class RAGPipeline:
         )
 
 
-def tuned_settings(paths: Paths | None = None) -> tuple[str, RetrieverConfig, str]:
+def tuned_settings(paths: Paths | None = None) -> tuple[str, RetrieverConfig, str | None]:
     """Dev-selected embedder / fusion / reranker from reports/dev_tuning.json (defaults if absent)."""
     try:
         from finrag.experiments.retrieval import selected_config
 
         return selected_config()
     except (FileNotFoundError, KeyError):
-        return "bge-small", RetrieverConfig(), "minilm-l6"
+        return "bge-small", RetrieverConfig(), None
 
 
-def load_retriever(paths: Paths, device: str, with_reranker: bool = True) -> HybridRetriever:
+def load_retriever(
+    paths: Paths, device: str, with_reranker: bool = True, reranker_name: str | None = None
+) -> HybridRetriever:
+    """Load the dev-tuned retriever. The reranker is the dev-selected one, unless `reranker_name`
+    forces one (used to time reranking even when it was not selected)."""
     from finrag.bm25 import BM25Index
     from finrag.dense import QdrantDenseIndex
     from finrag.embedders import SentenceTransformerEmbedder
@@ -72,13 +81,14 @@ def load_retriever(paths: Paths, device: str, with_reranker: bool = True) -> Hyb
     from finrag.rerank import CrossEncoderReranker
 
     emb_name, cfg, rr_name = tuned_settings(paths)
+    rr_name = reranker_name or rr_name
     e = EMBEDDERS[emb_name]
     embedder = SentenceTransformerEmbedder(
         e["hf_id"], emb_name, e["query_prefix"], e["passage_prefix"], device=device, batch_size=1
     )
     reranker = (
         CrossEncoderReranker(RERANKERS[rr_name], rr_name, device=device, batch_size=cfg.rerank_depth)
-        if with_reranker
+        if with_reranker and rr_name
         else None
     )
     return HybridRetriever(

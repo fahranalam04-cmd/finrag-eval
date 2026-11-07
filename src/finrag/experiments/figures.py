@@ -14,8 +14,10 @@ LABELS = {
     "dense:bge-base": "Dense: bge-base",
     "hybrid:rrf60": "Hybrid RRF (k=60, untuned)",
     "hybrid:tuned": "Hybrid RRF (dev-tuned)",
-    "hybrid+rerank:minilm-l6": "Hybrid + MiniLM-L6 rerank",
-    "hybrid+rerank:bge-reranker-base": "Hybrid + bge-reranker-base",
+    "hybrid+rerank:minilm-l6": "Hybrid + MiniLM-L6 (rank fusion)",
+    "hybrid+rerank:bge-reranker-base": "Hybrid + bge-reranker-base (rank fusion)",
+    "hybrid+pure-rerank:minilm-l6": "Hybrid + MiniLM-L6 (pure rerank)",
+    "hybrid+pure-rerank:bge-reranker-base": "Hybrid + bge-reranker-base (pure rerank)",
 }
 
 
@@ -114,11 +116,11 @@ def generation_tradeoff() -> None:
     import numpy as np
 
     g = read_report("generation_eval")
-    cfgs = [c for c in ("rerank_top3", "rerank_top5", "hybrid_top5") if c in g["configs"]]
+    cfgs = [c for c in ("selected_top3", "selected_top5", "bm25_top5") if c in g["configs"]]
     labels = {
-        "rerank_top3": "rerank, top-3",
-        "rerank_top5": "rerank, top-5",
-        "hybrid_top5": "no rerank, top-5",
+        "selected_top3": "selected pipeline, top-3",
+        "selected_top5": "selected pipeline, top-5",
+        "bm25_top5": "BM25, top-5",
     }
     metrics = [
         ("faithfulness_sentence", "Faithfulness\n(sentences entailed)"),
