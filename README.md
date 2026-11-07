@@ -112,7 +112,49 @@ should serve the tuned hybrid without reranking (0.4128 vs 0.4213 nDCG@10).
 
 ![Latency vs quality](reports/figures/latency_vs_quality.png)
 
-<!-- GEN -->
+### Generation (150 sampled test queries, Qwen2.5-1.5B-Instruct, greedy, prompt v1)
+
+The same 150 test queries (seed 13) were answered with the top-3 and the top-5 passages of the
+selected retrieval pipeline, then judged by DeBERTa-v3 NLI against the passages.
+
+| Metric | top-3 context | top-5 context |
+|---|---|---|
+| Answered (not abstained) | 126 / 150 | 131 / 150 |
+| Answers that cite at least one `[docID]` | 0.381 | 0.389 |
+| Citation validity (cited id was in the prompt) | 0.975 | 0.970 |
+| Citation precision vs qrels | 0.364 | 0.237 |
+| ... reference: share of context passages judged relevant | 0.247 | 0.184 |
+| Sentence faithfulness (entailed by its cited passage) | 0.232 | 0.241 |
+| Sentences entailed by *any* context passage | 0.764 | 0.791 |
+| Abstention rate | 0.160 | 0.127 |
+| ... when a judged-relevant passage was in context / when none was | 0.148 / 0.174 | 0.122 / 0.133 |
+| Throughput, batch 8 (s per answer) | 1.32 | 1.81 |
+
+Source: `reports/generation_eval.json` (`configs.*`) and `reports/generation_runs_test.json`
+(`timing`). Metric definitions are in the `finrag/faithfulness.py` docstring. Top-5 vs top-3 is not
+significant on answer-level faithfulness (paired bootstrap diff +0.0004, p=0.99, `paired_bootstrap`).
+Single-query `/answer` generation latency (batch 1, top-5) was 6.95 s p50 over only 5 queries. Peak
+VRAM was 4.15 GB.
+
+What the outputs show (counts are for top-5; details are in `INTERVIEW_NOTES.md`):
+- **When the model cites, the ids are real.** 97% of cited ids were in the prompt. The rest are
+  mostly the prompt's example id `[doc12345]` copied into 3 answers.
+- **The main failure is missing citations, not invented content.** 80 of 131 answers cite nothing.
+  Yet 76% of the uncited sentences are entailed by some context passage. The 0.24 vs 0.79 gap between
+  the two faithfulness rows is mostly a citation-format problem in a 1.5B model.
+- **Citations pick relevant passages better than chance.** Citation precision is 0.364 against a
+  0.247 base rate (top-3). More context lowers it (0.237), and wrong-passage citations rise from 3 to
+  20 sentences.
+- **Abstention does not track answerability.** The rate is nearly the same whether or not a
+  judged-relevant passage was in context.
+
+![Generation metrics](reports/figures/generation_tradeoff.png)
+
+Prompt selection (dev, 24 queries): a few-shot variant (v2) cut the share of answers with a citation
+from 45% to 17% versus the instruction prompt (v1), so v1 was frozen before the test run
+(`reports/generation_eval_dev_prompt_v1.json`, `..._v2.json`). A third config, BM25 top-5 context,
+was run on dev only, to stay within the GPU budget. So the effect of retrieval quality on generation
+is not measured on test.
 
 ## Reproduce
 
@@ -124,7 +166,8 @@ uv run pytest -q                       # 44 tests, CPU only, about 10 s (1.4 s o
 
 `finrag all` runs the stages listed in `scripts/reproduce.sh`, which can also be run one stage at a
 time, with the GPU stages wrapped in a lock. Data and models go to `$FINRAG_DATA_DIR` /
-`$FINRAG_MODELS_DIR`. On the reference laptop the GPU stages took about 45 minutes in total.
+`$FINRAG_MODELS_DIR`. Development used about 74 GPU-minutes on an RTX 3060 Laptop, including discarded
+reruns, so a clean pass needs less.
 
 Serve:
 
@@ -161,9 +204,14 @@ No data or weights are committed. Code: MIT (see `LICENSE`).
   ANN recall/latency trade-off is measured here.
 - **Reranking gain is small** (+0.0086 nDCG@10, CI [0.0022, 0.0152]). On CPU it is not worth its
   latency.
-- **Small generator.** A 1.5B model follows the citation format inconsistently (see the generation
-  results). Generation is evaluated on 150 sampled test queries, one seed, greedy decoding.
-  The prompt was chosen between two variants on 24 dev queries only.
+- **Small generator.** A 1.5B model follows the citation format inconsistently: 61% of top-5 answers
+  cite nothing. Generation is evaluated on 150 sampled test queries, with one seed and greedy decoding.
+  The prompt was chosen from two variants on only 24 dev queries. Retrieval quality (BM25 vs selected
+  context) was compared for generation on dev only.
+- **Windows GPU memory.** With the NVIDIA driver's sysmem fallback, PyTorch's cache spilled into host
+  RAM during batched generation (over 5 GB RSS, about 2x slower). Two changes fixed it: loading with
+  `device_map`, and capping the VRAM fraction and clearing the cache per batch. The run after the fix
+  peaked at 1.83 GB host RSS (`generation_runs_test.json`).
 - **NLI as a faithfulness judge** is an approximation. The DeBERTa NLI model sees at most 512 tokens,
   passages are truncated to 180 words in the prompt and the judge, and paraphrase-heavy or numeric
   claims can be misjudged in either direction. No human agreement study was done.

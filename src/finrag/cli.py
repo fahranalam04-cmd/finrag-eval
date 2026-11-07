@@ -129,8 +129,8 @@ def _all(a: argparse.Namespace, p: Paths) -> None:
         n_rerank_queries=None,
         n=150,
         seed=13,
-        configs=None,
-        n_single=10,
+        configs=["selected_top3", "selected_top5"],  # the two configs reported on test
+        n_single=5,
     )
     steps: list[tuple[str, Callable[[argparse.Namespace, Paths], None], dict]] = [
         ("prepare", _prepare, {}),
