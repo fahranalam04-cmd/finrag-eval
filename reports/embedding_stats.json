@@ -1,0 +1,37 @@
+{
+  "_generated": "2026-11-07T03:25:21",
+  "hardware": {
+    "cpu": "Intel i7-11800H (8C/16T), torch/BLAS threads capped at 4",
+    "os": "Windows-10-10.0.19045-SP0",
+    "python": "3.12.14",
+    "gpu": "NVIDIA GeForce RTX 3060 Laptop GPU",
+    "torch": "2.11.0+cu128"
+  },
+  "batch_size": 128,
+  "fp16": true,
+  "max_seq_length": 512,
+  "bge-small": {
+    "hf_id": "BAAI/bge-small-en-v1.5",
+    "dim": 384,
+    "n_passages": 57638,
+    "corpus_encode_seconds": 130.7,
+    "passages_per_second": 441.0,
+    "query_encode_seconds": {
+      "dev": 0.24,
+      "test": 0.42
+    },
+    "peak_vram_gb": 0.72
+  },
+  "bge-base": {
+    "hf_id": "BAAI/bge-base-en-v1.5",
+    "dim": 768,
+    "n_passages": 57638,
+    "corpus_encode_seconds": 346.3,
+    "passages_per_second": 166.5,
+    "query_encode_seconds": {
+      "dev": 0.34,
+      "test": 0.44
+    },
+    "peak_vram_gb": 1.56
+  }
+}
