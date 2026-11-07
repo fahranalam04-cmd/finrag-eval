@@ -16,6 +16,6 @@ $GPU_WRAP uv run finrag score-rerank --split test
 uv run finrag evaluate --split test
 $GPU_WRAP uv run finrag latency --device cuda --n-queries 200
 CUDA_VISIBLE_DEVICES="" uv run finrag latency --device cpu --n-queries 100 --n-rerank-queries 30
-$GPU_WRAP uv run finrag generate --split test --n 200 --seed 13
+$GPU_WRAP uv run finrag generate --split test --n 150 --seed 13
 $GPU_WRAP uv run finrag judge --split test
 uv run finrag figures

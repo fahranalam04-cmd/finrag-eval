@@ -1,0 +1,159 @@
+{
+  "_generated": "2026-11-07T08:24:09",
+  "split": "dev",
+  "n_queries_per_config": {
+    "selected_top3": 24,
+    "selected_top5": 24,
+    "bm25_top5": 24
+  },
+  "nli_model": "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli",
+  "nli_threshold": 0.5,
+  "definitions": "see finrag/faithfulness.py module docstring",
+  "configs": {
+    "selected_top3": {
+      "n_queries": 24,
+      "n_answered": 20,
+      "abstention_rate": 0.1667,
+      "abstention_rate_context_has_relevant": 0.0909,
+      "abstention_rate_context_no_relevant": 0.2308,
+      "n_context_has_relevant": 11,
+      "answers_with_citation_rate": 0.35,
+      "citation_validity": 0.9167,
+      "answers_all_citations_valid_rate": 0.3,
+      "citation_precision_qrels": 0.1818,
+      "context_precision_qrels": 0.1806,
+      "n_sentences": 78,
+      "sentence_own_citation_rate": 0.1282,
+      "faithfulness_sentence": 0.1795,
+      "faithfulness_answer_macro": 0.1858,
+      "fully_faithful_answer_rate": 0.0,
+      "context_faithfulness_sentence": 0.7308,
+      "nli_threshold": 0.5,
+      "ci95": {
+        "faithfulness_answer_macro": [
+          0.065,
+          0.3192
+        ],
+        "citation_precision_answer_macro": [
+          0.0,
+          0.5556
+        ],
+        "abstention_rate": [
+          0.0417,
+          0.3333
+        ]
+      },
+      "citation_precision_answer_macro": 0.2222
+    },
+    "selected_top5": {
+      "n_queries": 24,
+      "n_answered": 20,
+      "abstention_rate": 0.1667,
+      "abstention_rate_context_has_relevant": 0.1333,
+      "abstention_rate_context_no_relevant": 0.2222,
+      "n_context_has_relevant": 15,
+      "answers_with_citation_rate": 0.45,
+      "citation_validity": 0.9375,
+      "answers_all_citations_valid_rate": 0.4,
+      "citation_precision_qrels": 0.1333,
+      "context_precision_qrels": 0.1667,
+      "n_sentences": 73,
+      "sentence_own_citation_rate": 0.1644,
+      "faithfulness_sentence": 0.2192,
+      "faithfulness_answer_macro": 0.2436,
+      "fully_faithful_answer_rate": 0.15,
+      "context_faithfulness_sentence": 0.7945,
+      "nli_threshold": 0.5,
+      "ci95": {
+        "faithfulness_answer_macro": [
+          0.0786,
+          0.4221
+        ],
+        "citation_precision_answer_macro": [
+          0.0,
+          0.125
+        ],
+        "abstention_rate": [
+          0.0417,
+          0.3333
+        ]
+      },
+      "citation_precision_answer_macro": 0.0563
+    },
+    "bm25_top5": {
+      "n_queries": 24,
+      "n_answered": 21,
+      "abstention_rate": 0.125,
+      "abstention_rate_context_has_relevant": 0.125,
+      "abstention_rate_context_no_relevant": 0.125,
+      "n_context_has_relevant": 8,
+      "answers_with_citation_rate": 0.3333,
+      "citation_validity": 1.0,
+      "answers_all_citations_valid_rate": 0.3333,
+      "citation_precision_qrels": 0.0833,
+      "context_precision_qrels": 0.0833,
+      "n_sentences": 84,
+      "sentence_own_citation_rate": 0.1548,
+      "faithfulness_sentence": 0.1429,
+      "faithfulness_answer_macro": 0.1786,
+      "fully_faithful_answer_rate": 0.0476,
+      "context_faithfulness_sentence": 0.75,
+      "nli_threshold": 0.5,
+      "ci95": {
+        "faithfulness_answer_macro": [
+          0.0635,
+          0.3175
+        ],
+        "citation_precision_answer_macro": [
+          0.0,
+          0.2143
+        ],
+        "abstention_rate": [
+          0.0,
+          0.2917
+        ]
+      },
+      "citation_precision_answer_macro": 0.0714
+    }
+  },
+  "paired_bootstrap": {
+    "selected_top5 vs selected_top3": {
+      "faithfulness_answer_macro": {
+        "n_queries_answered_by_both": 18,
+        "diff": 0.0364,
+        "ci95_low": -0.1528,
+        "ci95_high": 0.2262,
+        "p_value": 0.7156
+      },
+      "abstention_rate": {
+        "diff": 0.0,
+        "ci95_low": -0.1667,
+        "ci95_high": 0.1667,
+        "p_value": 1.0
+      }
+    },
+    "selected_top5 vs bm25_top5": {
+      "faithfulness_answer_macro": {
+        "n_queries_answered_by_both": 18,
+        "diff": 0.0623,
+        "ci95_low": -0.1905,
+        "ci95_high": 0.3077,
+        "p_value": 0.6253
+      },
+      "abstention_rate": {
+        "diff": 0.0417,
+        "ci95_low": -0.125,
+        "ci95_high": 0.2083,
+        "p_value": 0.8218
+      }
+    }
+  },
+  "judge_seconds": 9.5,
+  "hardware": {
+    "cpu": "Intel i7-11800H (8C/16T), torch/BLAS threads capped at 4",
+    "os": "Windows-10-10.0.19045-SP0",
+    "python": "3.12.14",
+    "gpu": "NVIDIA GeForce RTX 3060 Laptop GPU",
+    "torch": "2.11.0+cu128"
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "_generated": "2026-11-07T08:23:22",
+  "split": "dev",
+  "n_queries": 24,
+  "sample_seed": 7,
+  "query_ids": [
+    "548",
+    "612",
+    "667",
+    "752",
+    "796",
+    "946",
+    "1031",
+    "1055",
+    "1746",
+    "2412",
+    "2696",
+    "3706",
+    "4156",
+    "4442",
+    "4750",
+    "4872",
+    "5425",
+    "5647",
+    "5836",
+    "6175",
+    "6846",
+    "8289",
+    "9707",
+    "10237"
+  ],
+  "generator": {
+    "hf_id": "Qwen/Qwen2.5-1.5B-Instruct",
+    "dtype": "float16",
+    "decoding": "greedy",
+    "max_new_tokens": 220,
+    "batch_size": 8,
+    "passage_truncation_words": 180
+  },
+  "configs": {
+    "selected_top3": {
+      "retrieval": "selected",
+      "k_context": 3
+    },
+    "selected_top5": {
+      "retrieval": "selected",
+      "k_context": 5
+    },
+    "bm25_top5": {
+      "retrieval": "bm25",
+      "k_context": 5
+    }
+  },
+  "system_prompt": "You are a careful financial question-answering assistant. Answer the question using ONLY the passages provided.\nRules:\n1. After every sentence, cite the passage(s) that support it using their ids in square brackets, for example [doc12345]. Only cite ids that appear in the passages.\n2. Do not use outside knowledge and do not invent facts, numbers or ids.\n3. If the passages do not contain enough information to answer, reply with exactly: not enough information\n4. Be concise: at most 4 sentences.",
+  "timing": {
+    "selected_top3": {
+      "seconds": 27.8,
+      "seconds_per_answer_amortised": 1.16,
+      "completion_tokens_per_second": 74.5,
+      "mean_prompt_tokens": 610.3,
+      "mean_completion_tokens": 86.5,
+      "hit_max_new_tokens": 0
+    },
+    "selected_top5": {
+      "seconds": 41.1,
+      "seconds_per_answer_amortised": 1.714,
+      "completion_tokens_per_second": 53.5,
+      "mean_prompt_tokens": 940.2,
+      "mean_completion_tokens": 91.8,
+      "hit_max_new_tokens": 0
+    },
+    "bm25_top5": {
+      "seconds": 81.0,
+      "seconds_per_answer_amortised": 3.376,
+      "completion_tokens_per_second": 26.7,
+      "mean_prompt_tokens": 1049.3,
+      "mean_completion_tokens": 90.2,
+      "hit_max_new_tokens": 1
+    }
+  },
+  "single_query_latency_ms": {
+    "config": "selected_top5",
+    "batch_size": 1,
+    "n_queries": 20,
+    "p50": 5911.4,
+    "p95": 12480.4
+  },
+  "peak_vram_gb": 4.1,
+  "hardware": {
+    "cpu": "Intel i7-11800H (8C/16T), torch/BLAS threads capped at 4",
+    "os": "Windows-10-10.0.19045-SP0",
+    "python": "3.12.14",
+    "gpu": "NVIDIA GeForce RTX 3060 Laptop GPU",
+    "torch": "2.11.0+cu128"
+  }
+}

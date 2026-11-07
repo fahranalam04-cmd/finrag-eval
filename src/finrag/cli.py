@@ -103,7 +103,7 @@ def _latency(a: argparse.Namespace, p: Paths) -> None:
 def _generate(a: argparse.Namespace, p: Paths) -> None:
     from finrag.experiments.generation_eval import generate
 
-    generate(p, a.split, a.n, a.seed, batch_size=a.batch_size)
+    generate(p, a.split, a.n, a.seed, batch_size=a.batch_size, configs=a.configs)
 
 
 def _judge(a: argparse.Namespace, p: Paths) -> None:
@@ -127,7 +127,7 @@ def _all(a: argparse.Namespace, p: Paths) -> None:
         device="cuda",
         n_queries=200,
         n_rerank_queries=None,
-        n=200,
+        n=150,
         seed=13,
     )
     steps: list[tuple[str, Callable[[argparse.Namespace, Paths], None], dict]] = [
@@ -184,6 +184,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--n", type=int, default=200)
     s.add_argument("--seed", type=int, default=13)
     s.add_argument("--batch-size", type=int, default=8)
+    s.add_argument("--configs", nargs="+", default=None, help="subset of generation configs")
     s.set_defaults(fn=_generate)
     s = sub.add_parser("judge", help="[GPU] NLI faithfulness + citation metrics")
     s.add_argument("--split", choices=["dev", "test"], default="test")

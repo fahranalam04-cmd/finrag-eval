@@ -33,6 +33,9 @@ def test_abstention_detection():
     assert is_abstention("Not enough information.")
     assert is_abstention("There is not enough information in the passages to answer.")
     assert not is_abstention("Index funds are cheap [doc101].")
+    # a long uncited answer that ends with a hedge is an (unsupported) answer, not an abstention
+    long_hedge = "Index funds are cheap and diversified and they track an index closely over time. " * 2
+    assert not is_abstention(long_hedge + "Otherwise there is not enough information.")
     # says the phrase but still makes a cited claim -> counted as an answer
     assert not is_abstention("Not enough information on fees, but they are passive [doc101].")
 
@@ -50,7 +53,8 @@ def test_split_sentences_keeps_trailing_citations_with_their_sentence():
 def test_prompt_contains_ids_and_truncates():
     msgs = build_messages("Why?", [ContextPassage("7", "word " * 500)], max_words=10)
     assert msgs[0]["role"] == "system" and ABSTAIN_PHRASE in msgs[0]["content"]
-    assert "[doc7] " in msgs[1]["content"] and msgs[1]["content"].count("word") == 10
+    assert "[doc7] " in msgs[-1]["content"] and msgs[-1]["content"].count("word") == 10
+    assert msgs[-2]["content"] == ABSTAIN_PHRASE  # the few-shot abstention demo precedes the question
     assert truncate_words("a b c", 5) == "a b c"
 
 

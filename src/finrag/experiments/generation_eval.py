@@ -18,7 +18,7 @@ from finrag.data import read_jsonl, write_jsonl
 from finrag.experiments.common import corpus_by_id, hardware, qrels, queries, write_report
 from finrag.experiments.retrieval import variant_runs
 from finrag.faithfulness import aggregate, judge_answer, per_answer_faithfulness
-from finrag.generation import DEFAULT_MAX_WORDS, SYSTEM_PROMPT, ContextPassage
+from finrag.generation import DEFAULT_MAX_WORDS, FEW_SHOT, SYSTEM_PROMPT, ContextPassage
 from finrag.metrics import bootstrap_ci, paired_bootstrap
 from finrag.types import ranked_ids
 
@@ -58,7 +58,8 @@ def generate(
     seed: int,
     batch_size: int = 8,
     max_new_tokens: int = 220,
-    n_single: int = 20,
+    n_single: int = 10,
+    configs: list[str] | None = None,
 ) -> dict:
     """GPU stage. Writes reports/generations_<split>.jsonl and reports/generation_runs_<split>.json."""
     import torch
@@ -72,7 +73,7 @@ def generate(
     gen = HFLocalGenerator(GENERATOR_HF_ID, batch_size=batch_size, max_new_tokens=max_new_tokens)
     torch.cuda.reset_peak_memory_stats()
     records, timing = [], {}
-    for cfg in GEN_CONFIGS:
+    for cfg in configs or list(GEN_CONFIGS):
         items = [(qtext[q], [ContextPassage(d, docs[d].text) for d in ctx[cfg][q]]) for q in qids]
         t0 = time.perf_counter()
         res = gen.generate_batch(items)
@@ -126,7 +127,11 @@ def generate(
             "batch_size": batch_size,
             "passage_truncation_words": DEFAULT_MAX_WORDS,
         },
-        "configs": {c: {"retrieval": GEN_CONFIGS[c][0], "k_context": GEN_CONFIGS[c][1]} for c in GEN_CONFIGS},
+        "configs": {
+            c: {"retrieval": GEN_CONFIGS[c][0], "k_context": GEN_CONFIGS[c][1]}
+            for c in configs or GEN_CONFIGS
+        },
+        "few_shot_demos": len(FEW_SHOT) // 2,
         "system_prompt": SYSTEM_PROMPT,
         "timing": timing,
         "single_query_latency_ms": {
@@ -186,7 +191,7 @@ def judge(paths: Paths, split: str, threshold: float = 0.5) -> dict:
         agg["citation_precision_answer_macro"] = round(float(np.mean(cit_prec)), 4) if cit_prec else None
         results[cfg] = {k: (round(v, 4) if isinstance(v, float) else v) for k, v in agg.items()}
     paired = {}
-    for a, b in PAIRED:
+    for a, b in [p for p in PAIRED if p[0] in by_cfg and p[1] in by_cfg]:
         fa, fb = per_answer_faithfulness(by_cfg[a], threshold), per_answer_faithfulness(by_cfg[b], threshold)
         both = sorted(set(fa) & set(fb))
         ab_a = {j.query_id: float(j.abstained) for j in by_cfg[a]}

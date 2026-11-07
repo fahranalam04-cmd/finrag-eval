@@ -19,12 +19,38 @@ SYSTEM_PROMPT = (
     "You are a careful financial question-answering assistant. Answer the question using ONLY the "
     "passages provided.\n"
     "Rules:\n"
-    "1. After every sentence, cite the passage(s) that support it using their ids in square brackets, "
-    "for example [doc12345]. Only cite ids that appear in the passages.\n"
+    "1. End every sentence with the id of the passage that supports it, in square brackets, exactly as "
+    "written before that passage, e.g. [docID]. Only cite ids that appear in the passages.\n"
     "2. Do not use outside knowledge and do not invent facts, numbers or ids.\n"
     f"3. If the passages do not contain enough information to answer, reply with exactly: {ABSTAIN_PHRASE}\n"
     "4. Be concise: at most 4 sentences."
 )
+
+# Prompt v2 (chosen on dev): v1 had no demonstration and a concrete example id; on 24 dev queries only
+# 35-45% of answers carried any citation and one copied the example id. A one-shot demonstration
+# (ids with a leading zero never occur in FiQA, so a copied demo id is counted as an invalid citation)
+# plus a matching abstention demo fixes the format for a 1.5B model.
+FEW_SHOT: list[dict[str, str]] = [
+    {
+        "role": "user",
+        "content": "Passages:\n[doc0001] A Roth IRA is funded with after-tax money, so qualified withdrawals "
+        "in retirement are tax free.\n\n[doc0002] Contributions to a traditional IRA may be deductible, "
+        "but withdrawals in retirement are taxed as ordinary income.\n\nQuestion: Are Roth IRA "
+        "withdrawals taxed?",
+    },
+    {
+        "role": "assistant",
+        "content": "Qualified Roth IRA withdrawals in retirement are tax free because the contributions were "
+        "made with after-tax money [doc0001]. A traditional IRA works the other way: withdrawals are "
+        "taxed as ordinary income [doc0002].",
+    },
+    {
+        "role": "user",
+        "content": "Passages:\n[doc0003] Bond prices fall when market interest rates rise.\n\n"
+        "Question: Which credit card has the best travel rewards?",
+    },
+    {"role": "assistant", "content": ABSTAIN_PHRASE},
+]
 
 
 @dataclass(frozen=True)
@@ -63,13 +89,8 @@ def format_context(passages: Sequence[ContextPassage], max_words: int = DEFAULT_
 def build_messages(
     question: str, passages: Sequence[ContextPassage], max_words: int = DEFAULT_MAX_WORDS
 ) -> list[dict[str, str]]:
-    user = (
-        f"Passages:\n{format_context(passages, max_words)}\n\n"
-        f"Question: {question}\n\n"
-        "Answer in at most 4 sentences, citing passages like [doc12345] after each sentence, "
-        f"or reply exactly '{ABSTAIN_PHRASE}'."
-    )
-    return [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user}]
+    user = f"Passages:\n{format_context(passages, max_words)}\n\nQuestion: {question}"
+    return [{"role": "system", "content": SYSTEM_PROMPT}, *FEW_SHOT, {"role": "user", "content": user}]
 
 
 _BRACKET = re.compile(r"\[([^\[\]]{1,200})\]")
@@ -92,12 +113,14 @@ def strip_citations(text: str) -> str:
     return re.sub(r"\s+", " ", t).strip()
 
 
-def is_abstention(answer: str, cited_ids: Sequence[str] | None = None) -> bool:
-    """Abstained = the answer contains the abstain phrase and cites nothing (an answer that says the
-    phrase but still makes cited claims is treated as an answer)."""
+def is_abstention(answer: str, cited_ids: Sequence[str] | None = None, max_words: int = 15) -> bool:
+    """Abstained = cites nothing, contains the abstain phrase, and either opens with it or is short.
+    A long uncited answer that merely ends with a hedge is scored as an (unsupported) answer."""
     cited = parse_citations(answer) if cited_ids is None else cited_ids
-    norm = re.sub(r"[^a-z ]", " ", answer.lower())
-    return ABSTAIN_PHRASE in " ".join(norm.split()) and not cited
+    norm = " ".join(re.sub(r"[^a-z ]", " ", answer.lower()).split())
+    if cited or ABSTAIN_PHRASE not in norm:
+        return False
+    return norm.startswith(ABSTAIN_PHRASE) or len(norm.split()) <= max_words
 
 
 def make_result(answer: str, **kw) -> GenerationResult:
