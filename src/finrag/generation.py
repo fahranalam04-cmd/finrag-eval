@@ -186,6 +186,7 @@ class HFLocalGenerator:
         max_new_tokens: int = 220,
         batch_size: int = 8,
         max_words: int = DEFAULT_MAX_WORDS,
+        vram_fraction: float | None = 0.8,
     ) -> None:
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -193,13 +194,23 @@ class HFLocalGenerator:
         from finrag.config import revision
 
         self._torch = torch
+        if device == "cuda" and vram_fraction:
+            # On Windows the NVIDIA driver's sysmem fallback lets cudaMalloc spill into host RAM instead of
+            # failing, so PyTorch's caching allocator never frees its cache and the process grows in host
+            # memory (observed: >5 GB RSS and a 2x slowdown). A hard cap makes the allocator free and retry.
+            torch.cuda.set_per_process_memory_fraction(vram_fraction)
         self.tok = AutoTokenizer.from_pretrained(hf_id, revision=revision(hf_id))
         self.tok.padding_side = "left"
         if self.tok.pad_token is None:
             self.tok.pad_token = self.tok.eos_token
+        # device_map loads the weights straight onto the device. Loading on CPU and calling .to("cuda")
+        # left a ~3 GB host copy resident (measured: 3.6 GB vs 0.8 GB RSS after load).
         self.model = AutoModelForCausalLM.from_pretrained(
-            hf_id, revision=revision(hf_id), dtype=torch.float16 if device == "cuda" else torch.float32
-        ).to(device)
+            hf_id,
+            revision=revision(hf_id),
+            dtype=torch.float16 if device == "cuda" else torch.float32,
+            device_map=device,
+        )
         self.model.eval()
         self.name, self.hf_id, self.device = hf_id.split("/")[-1], hf_id, device
         self.max_new_tokens, self.batch_size, self.max_words = max_new_tokens, batch_size, max_words
@@ -231,6 +242,7 @@ class HFLocalGenerator:
             if self.device == "cuda":
                 torch.cuda.synchronize()
             dt = time.perf_counter() - t0
+            out = out.cpu()
             new = out[:, enc["input_ids"].shape[1] :]
             texts = self.tok.batch_decode(new, skip_special_tokens=True)
             for row, i in enumerate(idx):
@@ -241,6 +253,9 @@ class HFLocalGenerator:
                     completion_tokens=n_new,
                     meta={"batch_seconds": dt, "batch_size": len(idx)},
                 )
+            del enc, out
+            if self.device == "cuda":
+                torch.cuda.empty_cache()  # length-bucketed batches all differ in shape; avoid fragmentation
         return [r for r in results if r is not None]
 
     def close(self) -> None:

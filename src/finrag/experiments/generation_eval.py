@@ -47,6 +47,16 @@ def contexts(paths: Paths, split: str) -> dict[str, dict[str, list[str]]]:
     return out
 
 
+def _host_rss_gb() -> float | None:
+    try:
+        import psutil
+
+        m = psutil.Process().memory_info()
+        return round(getattr(m, "peak_wset", m.rss) / 2**30, 2)
+    except Exception:  # psutil is optional (comes with accelerate)
+        return None
+
+
 def _gen_path(split: str):
     return REPORTS_DIR / f"generations_{split}.jsonl"
 
@@ -101,7 +111,8 @@ def generate(
                     "completion_tokens": r.completion_tokens,
                 }
             )
-        print(f"[generate] {cfg}: {len(res)} answers in {secs:.0f}s", flush=True)
+        write_jsonl(_gen_path(split), records)  # checkpoint after every config
+        print(f"[generate] {cfg}: {len(res)} answers in {secs:.0f}s, host {_host_rss_gb()} GB", flush=True)
     # online-style latency: one question at a time (batch size 1), selected config, first n_single queries
     gen.batch_size = 1
     single_ms = []
@@ -142,6 +153,7 @@ def generate(
             "p95": round(float(np.percentile(single_ms, 95)), 1) if single_ms else None,
         },
         "peak_vram_gb": round(peak, 2),
+        "peak_host_rss_gb": _host_rss_gb(),
         "hardware": hardware(gpu=True),
     }
     write_report(f"generation_runs_{split}", report)
@@ -152,14 +164,14 @@ def _ci(xs: list[float]) -> list[float]:
     return [round(v, 4) for v in bootstrap_ci(xs)] if xs else []
 
 
-def judge(paths: Paths, split: str, threshold: float = 0.5) -> dict:
+def judge(paths: Paths, split: str, threshold: float = 0.5, device: str = "cuda") -> dict:
     """GPU stage (NLI model). Writes reports/generation_eval[_<split>].json + per-answer judgments."""
     from finrag.faithfulness import HFNLIScorer
 
     records = list(read_jsonl(_gen_path(split)))
     docs = corpus_by_id(paths)
     qr = qrels(split, paths)
-    nli = HFNLIScorer(NLI_HF_ID)
+    nli = HFNLIScorer(NLI_HF_ID, device=device)
     t0 = time.perf_counter()
     by_cfg: dict[str, list] = {}
     for r in records:

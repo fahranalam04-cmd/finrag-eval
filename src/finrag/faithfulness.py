@@ -75,11 +75,9 @@ class HFNLIScorer:
 
         self._torch = torch
         self.tok = AutoTokenizer.from_pretrained(hf_id, revision=revision(hf_id))
-        self.model = (
-            AutoModelForSequenceClassification.from_pretrained(hf_id, revision=revision(hf_id))
-            .to(device)
-            .eval()
-        )
+        self.model = AutoModelForSequenceClassification.from_pretrained(
+            hf_id, revision=revision(hf_id), device_map=device
+        ).eval()
         labels = {v.lower(): int(k) for k, v in self.model.config.id2label.items()}
         self.entail_idx = labels["entailment"]
         self.device, self.batch_size, self.max_length = device, batch_size, max_length

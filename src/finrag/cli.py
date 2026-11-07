@@ -103,13 +103,13 @@ def _latency(a: argparse.Namespace, p: Paths) -> None:
 def _generate(a: argparse.Namespace, p: Paths) -> None:
     from finrag.experiments.generation_eval import generate
 
-    generate(p, a.split, a.n, a.seed, batch_size=a.batch_size, configs=a.configs)
+    generate(p, a.split, a.n, a.seed, batch_size=a.batch_size, configs=a.configs, n_single=a.n_single)
 
 
 def _judge(a: argparse.Namespace, p: Paths) -> None:
     from finrag.experiments.generation_eval import judge
 
-    judge(p, a.split)
+    judge(p, a.split, device=a.device)
 
 
 def _figures(a: argparse.Namespace, p: Paths) -> None:
@@ -130,6 +130,7 @@ def _all(a: argparse.Namespace, p: Paths) -> None:
         n=150,
         seed=13,
         configs=None,
+        n_single=10,
     )
     steps: list[tuple[str, Callable[[argparse.Namespace, Paths], None], dict]] = [
         ("prepare", _prepare, {}),
@@ -186,9 +187,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--seed", type=int, default=13)
     s.add_argument("--batch-size", type=int, default=8)
     s.add_argument("--configs", nargs="+", default=None, help="subset of generation configs")
+    s.add_argument("--n-single", type=int, default=10, help="batch-size-1 latency samples")
     s.set_defaults(fn=_generate)
     s = sub.add_parser("judge", help="[GPU] NLI faithfulness + citation metrics")
     s.add_argument("--split", choices=["dev", "test"], default="test")
+    s.add_argument("--device", choices=["cuda", "cpu"], default="cuda")
     s.set_defaults(fn=_judge)
     sub.add_parser("figures", help="render reports/figures/*.png").set_defaults(fn=_figures)
     sub.add_parser("all", help="run every stage in order").set_defaults(fn=_all)
