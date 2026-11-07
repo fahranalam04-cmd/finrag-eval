@@ -1,0 +1,25 @@
+{
+  "_generated": "2026-11-07T07:59:22",
+  "mode": "qdrant-client embedded/local (exact search)",
+  "hardware": {
+    "cpu": "Intel i7-11800H (8C/16T), torch/BLAS threads capped at 4",
+    "os": "Windows-10-10.0.19045-SP0",
+    "python": "3.12.14"
+  },
+  "bge-small": {
+    "n_points": 57638,
+    "upsert_seconds": 29.1,
+    "batch_search_ms_per_query": {
+      "dev": 266.52,
+      "test": 253.52
+    }
+  },
+  "bge-base": {
+    "n_points": 57638,
+    "upsert_seconds": 62.5,
+    "batch_search_ms_per_query": {
+      "dev": 513.94,
+      "test": 608.99
+    }
+  }
+}

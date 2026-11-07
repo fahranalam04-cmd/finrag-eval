@@ -55,6 +55,7 @@ class QdrantDenseIndex:
             vectors_config=models.VectorParams(size=int(vectors.shape[1]), distance=models.Distance.COSINE),
             hnsw_config=models.HnswConfigDiff(m=16, ef_construct=128),
         )
+        self._fast_local_writes()
         for start in range(0, len(passages), batch_size):
             chunk = passages[start : start + batch_size]
             self.client.upsert(
@@ -69,6 +70,18 @@ class QdrantDenseIndex:
                 ],
                 wait=True,
             )
+
+    def _fast_local_writes(self) -> None:
+        """Embedded mode commits one SQLite transaction per point; with the default rollback journal +
+        full fsync that is ~10 ms/point on Windows (~10 min for 57.6K). WAL + synchronous=NORMAL keeps
+        durability on commit boundaries and makes the bulk load take seconds. Best-effort: relies on
+        qdrant-client internals, silently skipped if they change or on a server."""
+        try:
+            conn = self.client._client.collections[self.collection].storage.storage  # type: ignore[attr-defined]
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA synchronous=NORMAL")
+        except (AttributeError, KeyError):
+            pass
 
     def count(self) -> int:
         return int(self.client.count(self.collection, exact=True).count)

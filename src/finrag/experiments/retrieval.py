@@ -32,7 +32,7 @@ from finrag.retriever import RetrieverConfig
 from finrag.types import Ranked, ranked_ids
 
 RRF_K_GRID = (1, 5, 10, 20, 40, 60, 100)
-DENSE_WEIGHT_GRID = (1.0, 1.5, 2.0, 3.0)
+DENSE_WEIGHT_GRID = (1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 10.0)
 RERANK_DEPTH_GRID = (5, 10, 20, 30, 50)
 SELECT = "ndcg@10"
 
