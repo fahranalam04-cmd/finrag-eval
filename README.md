@@ -65,7 +65,7 @@ UI in `app/streamlit_app.py`, tests in `tests/` (they run on CPU with fakes, no 
 Source: `reports/retrieval_test.json` (`variants`). CIs are percentile bootstraps over queries
 (10k draws). The metrics are this repo's own implementation (`finrag.metrics`, unit-tested). They
 were cross-checked against `ir_measures`/pytrec_eval on every variant, with a max absolute difference
-of 3.3e-16 (`variants.*.crosscheck`).
+of 4.4e-16 across all 9 variants (`variants.*.crosscheck.max_abs_diff`).
 
 Paired bootstrap on per-query nDCG@10 (`paired_bootstrap_ndcg@10`):
 

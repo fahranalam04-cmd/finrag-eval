@@ -115,7 +115,7 @@ makes the lift claim more conservative.
 - Unit tests on hand-computed cases: ideal and inverted rankings, duplicates, no relevant documents,
   k larger than the list.
 - Every reported variant is cross-checked against `ir_measures` (pytrec_eval), with a max absolute
-  difference of 3.3e-16.
+  difference of 4.4e-16 across the 9 variants.
 
 **3. Is +0.0086 nDCG from the reranker real?**
 - A paired bootstrap over the 648 test queries gives CI [0.0022, 0.0152] and p=0.012, so it is probably
