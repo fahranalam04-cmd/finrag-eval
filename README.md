@@ -217,5 +217,8 @@ No data or weights are committed. Code: MIT (see `LICENSE`).
   claims can be misjudged in either direction. No human agreement study was done.
 - **Shared laptop GPU.** Latency was measured on a laptop whose GPU was shared with another workload
   (serialised by a lock, but thermals were not controlled). p95 values are the least reliable numbers.
+- **Serving only smoke-tested.** `/health`, `/search` (hybrid and hybrid_rerank) and the 503 from
+  `/answer` without a generator were checked against the real indexes on CPU. `/answer` with the LLM
+  loaded and the Streamlit UI were not run end to end; API behaviour is covered by fake-backed tests.
 - **CI not yet run.** `.github/workflows/ci.yml` (ruff + pytest on CPU) has been written but has not
   run on GitHub, because the repo has not been pushed.
