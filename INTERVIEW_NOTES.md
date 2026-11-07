@@ -85,7 +85,58 @@ passages in the context shows whether the model picks relevant passages better t
 4. **Embedded Qdrant write speed.** The first build took about 10 min per collection because of
    per-point commits. Fixed with SQLite pragmas (see above), not by switching tools.
 
-<!-- GEN-FAILURES -->
+5. **Batched generation ate host RAM on Windows.**
+   - The first test generation run grew past 5 GB RSS and ran about 2x slower than on dev. My RAM guard
+     killed it before the machine ran out of memory.
+   - I found two causes:
+     - Loading on CPU and then calling `.to("cuda")` left about 3 GB resident. I measured 3.6 GB vs
+       0.8 GB RSS with `device_map="cuda"`.
+     - With the driver's sysmem fallback, VRAM allocations spill into host memory instead of failing.
+       So PyTorch's caching allocator never frees, and length-bucketed batches keep fragmenting it.
+   - Fix: load with `device_map`, call `set_per_process_memory_fraction(0.8)`, and run `empty_cache()`
+     after every batch. I also checkpoint each config to disk.
+   - The rerun peaked at 1.83 GB host RSS (`generation_runs_test.json`). The cost was about 23 wasted
+     GPU-minutes and a smaller test generation study (two configs, not three).
+
+## Generation results and failure modes (test, 150 queries, read from the outputs)
+
+Numbers are from `reports/generation_eval.json`. The counts come from reading
+`reports/generation_judgments_test.jsonl` and `generations_test.jsonl` (selected_top5 unless stated).
+
+| | top-3 | top-5 |
+|---|---|---|
+| answered / 150 | 126 | 131 |
+| answers citing anything | 0.381 | 0.389 |
+| citation validity | 0.975 | 0.970 |
+| citation precision vs qrels (base rate) | 0.364 (0.247) | 0.237 (0.184) |
+| sentence faithfulness / any-context support | 0.232 / 0.764 | 0.241 / 0.791 |
+| abstention (relevant in ctx / none) | 0.148 / 0.174 | 0.122 / 0.133 |
+
+Failure modes, from most to least important:
+
+1. **Grounded but uncited.** 80 of 131 answers have no `[docID]` at all. Of their sentences, 366 are
+   entailed by some context passage and 113 are not. The model mostly paraphrases the passages
+   correctly but drops the citation format. That is why sentence faithfulness (0.24) sits so far below
+   context support (0.79). The fix is format control (constrained decoding, a larger model, or
+   post-hoc attribution by NLI), not better retrieval.
+2. **Copying the prompt's example id.** 3 answers (2 for top-3) cite `[doc12345]` from the
+   instruction, as in "Based on the passage [doc12345], ...". They are scored as invalid citations.
+   The few-shot prompt that removed the example id was worse overall (dev: 17% vs 45% citing).
+3. **Misattribution with more context.** Sentences that cite a passage which does not entail them,
+   while another context passage does, rose from 3 (top-3) to 20 (top-5). Citation precision vs qrels
+   falls from 0.364 to 0.237. More passages give the model more ways to point at the wrong one.
+4. **Citation as a preamble.** Many cited sentences put the id first, as in "According to [docX], ...".
+   Several then say something the passage does not support. One example cites a passage for "feeling
+   comfortable with an 8% gain suggests selling" with NLI p=0.00. The passage is about something else,
+   while another passage in context does support the sentence.
+5. **Abstention is uninformative.** The abstention rate is about the same whether or not a
+   judged-relevant passage is in context (0.122 vs 0.133). Some abstentions are on clearly answerable
+   questions (bond ETF capital gains with a relevant passage in context). Meanwhile 52 of 60 queries
+   with no judged-relevant passage are answered anyway, though sparse qrels mean some of those
+   contexts are in fact useful.
+
+What helps and what doesn't: top-5 vs top-3 makes no difference to answer-level faithfulness
+(+0.0004, p=0.99) and lowers citation precision. So top-3 is the better default for this model.
 
 ## Weaknesses (what I'd say before the interviewer does)
 
@@ -94,8 +145,9 @@ passages in the context shows whether the model picks relevant passages better t
   systems that retrieve the same kind of passages as the annotated ones.
 - **The reranking gain is small** and costs about 10 s per query on CPU. On CPU I would serve the tuned
   hybrid.
-- **The generator is small.** Qwen2.5-1.5B follows the citation format inconsistently. The prompt was
-  chosen from two variants on 24 dev queries, which is a small sample.
+- **The generator is small.** Qwen2.5-1.5B follows the citation format inconsistently: 61% of top-5
+  answers cite nothing. The prompt was chosen from two variants on 24 dev queries, which is a small
+  sample. The BM25-context generation config was only run on dev.
 - **The NLI judge is unvalidated.** No human agreement study. It truncates at 512 tokens, and numeric
   or multi-hop claims can be misjudged.
 - **Latency is not production-like.** Embedded Qdrant dominates. No HNSW recall/latency trade-off was
