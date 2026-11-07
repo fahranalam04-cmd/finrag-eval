@@ -1,5 +1,5 @@
 {
-  "_generated": "2026-11-07T08:06:24",
+  "_generated": "2026-11-07T08:11:37",
   "dev": {
     "embedder": "bge-base",
     "hardware": {
@@ -41,20 +41,20 @@
     },
     "minilm-l6": {
       "hf_id": "cross-encoder/ms-marco-MiniLM-L6-v2",
-      "depth": 5,
-      "n_pairs": 3240,
-      "seconds": 3.2,
-      "pairs_per_second": 1004.0,
+      "depth": 20,
+      "n_pairs": 12960,
+      "seconds": 11.6,
+      "pairs_per_second": 1115.0,
       "batch_size": 64,
       "fp16": true,
       "max_length": 512
     },
     "bge-reranker-base": {
       "hf_id": "BAAI/bge-reranker-base",
-      "depth": 5,
-      "n_pairs": 3240,
-      "seconds": 12.7,
-      "pairs_per_second": 255.9,
+      "depth": 20,
+      "n_pairs": 12960,
+      "seconds": 56.6,
+      "pairs_per_second": 228.8,
       "batch_size": 64,
       "fp16": true,
       "max_length": 512
